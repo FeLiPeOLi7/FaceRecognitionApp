@@ -33,18 +33,28 @@ def _get_or_create_key(key_path: Path = KEY_PATH) -> bytes:
 
 
 def _encrypt_name(name: str, key: bytes) -> bytes:
+    '''
+    Encrypt the user name with Fernet symetric encryption.
+    '''
     cipher = Fernet(key)
     
     return cipher.encrypt(name.encode("utf-8"))
 
 
 def _decrypt_name(payload: bytes, key: bytes) -> str:
+    '''
+    Decrypt the user name with Fernet symetric encryption.
+    '''
     cipher = Fernet(key)
 
     return cipher.decrypt(payload).decode("utf-8")
 
 
 def _vector_to_blob(vector: np.ndarray) -> bytes:
+    '''
+    Convert a NumPy array to a Binary Large Object (BLOB) for storage in SQLite.
+    The vector is expected to be a 128-dimensional float32 array.
+    '''
     arr = np.asarray(vector, dtype=np.float32).reshape(-1)
     if arr.shape[0] != ENCODING_SIZE:
         raise ValueError(f"Expected vector with {ENCODING_SIZE} values, got {arr.shape[0]}")
@@ -52,6 +62,10 @@ def _vector_to_blob(vector: np.ndarray) -> bytes:
 
 
 def _blob_to_vector(blob: bytes) -> np.ndarray:
+    '''
+    Convert a Binary Large Object (BLOB) to a NumPy array.
+    The vector is expected to be a 128-dimensional float32 array.
+    '''
     arr = np.frombuffer(blob, dtype=np.float32)
     if arr.shape[0] != ENCODING_SIZE:
         raise ValueError("Stored encoding has invalid size")
@@ -59,12 +73,22 @@ def _blob_to_vector(blob: bytes) -> np.ndarray:
 
 
 def _open_connection(db_path: Path = DB_PATH) -> sqlite3.Connection:
+    '''
+    Open a connection to the SQLite database.
+
+    Enable foreign key (i.e. a column (or group of columns) in one table that references the primary key of another table.)
+    '''
     conn = sqlite3.connect(db_path)
     conn.execute("PRAGMA foreign_keys = ON;")
     return conn
 
 
 def _load_sqlite_vec(conn: sqlite3.Connection) -> bool:
+    '''
+    Loads the sqlite-vec extension
+
+    So we can search the database using vector similarity, much faster than doing it in Python.
+    '''
     try:
         import sqlite_vec  # type: ignore
     except Exception:
@@ -80,6 +104,15 @@ def _load_sqlite_vec(conn: sqlite3.Connection) -> bool:
 
 
 def init_db(db_path: Path = DB_PATH, key_path: Path = KEY_PATH) -> dict[str, Any]:
+    '''
+    Create the key to the database if it does not exist
+
+    Create the database and tables if they do not exist
+        - users: stores the user_id and the encrypted name
+        - face_encodings: stores the user_id and the face encoding as a BLOB
+        - vec_face_encodings: virtual table for vector search (if sqlite-vec is available)
+    '''
+    
     _get_or_create_key(key_path)
 
     with _open_connection(db_path) as conn:
@@ -117,6 +150,12 @@ def init_db(db_path: Path = DB_PATH, key_path: Path = KEY_PATH) -> dict[str, Any
 
 
 def save_face(name: str, encoding_vector: np.ndarray, db_path: Path = DB_PATH, key_path: Path = KEY_PATH) -> int:
+    '''
+    Register a new face in the database. 
+    
+    Returns the user_id of the new entry.
+    '''
+    
     key = _get_or_create_key(key_path)
     encrypted_name = _encrypt_name(name, key)
     encoding_blob = _vector_to_blob(encoding_vector)
@@ -126,7 +165,7 @@ def save_face(name: str, encoding_vector: np.ndarray, db_path: Path = DB_PATH, k
         cur = conn.cursor()
         cur.execute("BEGIN")
         cur.execute("INSERT INTO users(name_encrypted) VALUES (?)", (encrypted_name,))
-        user_id = int(cur.lastrowid)
+        user_id = int(cur.lastrowid) # The foreign key in face_encodings and vec_face_encodings tables
         cur.execute("INSERT INTO face_encodings(user_id, encoding) VALUES (?, ?)", (user_id, encoding_blob))
 
         if vec_enabled:
@@ -146,6 +185,13 @@ def search_face(
     db_path: Path = DB_PATH,
     key_path: Path = KEY_PATH,
 ) -> dict[str, Any] | None:
+    '''
+    Try to use vectorial search to find the most similar user
+
+    If it is not possible, fallback to calculate the distance of all users with NumPy
+
+    Returns a dict if we have a match, else returns None
+    '''
     key = _get_or_create_key(key_path)
     query_blob = _vector_to_blob(query_vector)
 
@@ -154,6 +200,7 @@ def search_face(
         user_id = None
         distance = None
 
+        # Vectorial search
         if vec_enabled:
             try:
                 row = conn.execute(
@@ -174,7 +221,9 @@ def search_face(
                 user_id = None
                 distance = None
 
+        # Fallback when we don't have sqlite-vec our SQL didn't return any candidate
         if user_id is None:
+            # WARNING: This brings all users to memory...maybe it can overflow (but the encodes are small, it should suffice for a good number os users)
             candidates = conn.execute("SELECT user_id, encoding FROM face_encodings").fetchall()
             if not candidates:
                 return None
@@ -205,6 +254,11 @@ def search_face(
 
 
 def delete_person(user_id: int, db_path: Path = DB_PATH) -> bool:
+    '''
+    Atomic deletion of a user by user_id. (LGPD - Right to be forgotten)
+    
+    Returns True if a user was deleted, False if no such user_id exists.
+    '''
     with _open_connection(db_path) as conn:
         vec_enabled = _load_sqlite_vec(conn)
         cur = conn.cursor()
@@ -220,11 +274,17 @@ def delete_person(user_id: int, db_path: Path = DB_PATH) -> bool:
 
 
 def count_people(db_path: Path = DB_PATH) -> int:
+    '''
+    Returns the total number of registered people in the database.
+    '''
     with _open_connection(db_path) as conn:
         row = conn.execute("SELECT COUNT(*) FROM users").fetchone()
         return int(row[0]) if row else 0
 
 def print_all_people(db_path: Path = DB_PATH, key_path: Path = KEY_PATH) -> None:
+    '''
+    Prints all registered users.
+    '''
     key = _get_or_create_key(key_path)
 
     with _open_connection(db_path) as conn:
@@ -233,59 +293,3 @@ def print_all_people(db_path: Path = DB_PATH, key_path: Path = KEY_PATH) -> None
         for user_id, name_encrypted in rows:
             name = _decrypt_name(name_encrypted, key)
             print(f"ID: {user_id}, Name: {name}, Encrypted: {name_encrypted}")
-
-
-
-# def _get_or_create_key(key_path: Path = KEY_PATH) -> bytes:
-#     '''
-#     Get or create the encription key for the database. 
-#     The key is used to encrypt the user names and stored in a db_key.key file.
-#     '''
-#     if key_path.exists():
-#         key = key_path.read_bytes()
-#         if len(key) != 32:
-#             raise ValueError("Invalid key length in db_key.key")
-#         return key
-
-#     key = os.urandom(32)
-#     key_path.write_bytes(key)
-#     os.chmod(key_path, 0o600)
-#     return key
-
-
-# def _keystream(key: bytes, nonce: bytes, length: int) -> bytes:
-#     '''
-#     Generate a keystream of the given length using HMAC-SHA256 with the provided key and nonce.
-#     '''
-#     out = bytearray()
-#     counter = 0
-#     while len(out) < length:
-#         block = hmac.new(key, nonce + counter.to_bytes(8, "little"), hashlib.sha256).digest()
-#         out.extend(block)
-#         counter += 1
-#     return bytes(out[:length])
-
-
-# def _encrypt_name(name: str, key: bytes) -> bytes:
-#     plaintext = name.encode("utf-8")
-#     nonce = os.urandom(16)
-#     stream = _keystream(key, nonce, len(plaintext))
-#     ciphertext = bytes(p ^ s for p, s in zip(plaintext, stream))
-#     tag = hmac.new(key, nonce + ciphertext, hashlib.sha256).digest()
-#     return nonce + ciphertext + tag
-
-
-# def _decrypt_name(payload: bytes, key: bytes) -> str:
-#     if len(payload) < 48:
-#         raise ValueError("Corrupted encrypted payload")
-
-#     nonce = payload[:16]
-#     tag = payload[-32:]
-#     ciphertext = payload[16:-32]
-#     expected = hmac.new(key, nonce + ciphertext, hashlib.sha256).digest()
-#     if not hmac.compare_digest(tag, expected):
-#         raise ValueError("Encrypted payload integrity check failed")
-
-#     stream = _keystream(key, nonce, len(ciphertext))
-#     plaintext = bytes(c ^ s for c, s in zip(ciphertext, stream))
-#     return plaintext.decode("utf-8")
