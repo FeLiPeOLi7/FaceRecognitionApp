@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Register Face</title>
+</head>
+<body>
+
+    <h2>Register Face</h2>
+
+    <form
+        action="/register"
+        method="POST"
+        enctype="multipart/form-data"
+    >
+        <label>Name:</label>
+        <input
+            type="text"
+            name="name"
+            required
+        >
+
+        <br><br>
+
+        <label>I consent to the storage and processing of my biometric data:</label>
+        <input
+            type="checkbox"
+            name="consent"
+            required
+        >
+
+        <br><br>
+
+        <label>Face image:</label>
+        <input
+            type="file"
+            name="image"
+            accept="image/*"
+            required
+        >
+
+        <br><br>
+
+        <button type="submit">
+            Register
+        </button>
+    </form>
+
+    <script>
+
+    document
+    .getElementById("registerForm")
+    .addEventListener(
+        "submit",
+        function(event){
+
+            let consent =
+                document.getElementById(
+                    "consent"
+                );
+
+            if(!consent.checked){
+
+                event.preventDefault();
+
+                alert(
+                    "Consent is required to register facial biometric data."
+                );
+            }
+        }
+    );
+
+    </script>
+
+</body>
+</html>
