@@ -190,6 +190,9 @@ dependencies:
   - wayland=1.25.0=hd6090a7_0
   - wayland-protocols=1.47=hd8ed1ab_0
   - wheel=0.47.0=pyhd8ed1ab_0
+  - pip:
+      - sqlite-vec
+      - cryptography
   - x264=1!164.3095=h166bdaf_2
   - x265=3.5=h924138e_3
   - xcb-util=0.4.1=h4f16b4b_2
