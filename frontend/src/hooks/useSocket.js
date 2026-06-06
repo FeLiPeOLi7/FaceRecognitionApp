@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { io } from 'socket.io-client';
+import { getBackendUrl } from '../config/backendUrl';
 
 export function useSocket(serverUrl = '/') {
     const socketRef = useRef(null); // Socket reference
@@ -7,8 +8,14 @@ export function useSocket(serverUrl = '/') {
     const [socketError, setSocketError] = useState(false); // Error status
 
     useEffect(() => {
+        const resolvedServerUrl = serverUrl && serverUrl !== '/'
+            ? serverUrl
+            : getBackendUrl();
+
         // Starts socket connection with the server
-        socketRef.current = io(serverUrl);
+        socketRef.current = io(resolvedServerUrl, {
+            transports: ['websocket', 'polling'],
+        });
 
         // Waits for the server to send the processed event
         socketRef.current.on('processed', (data) => {

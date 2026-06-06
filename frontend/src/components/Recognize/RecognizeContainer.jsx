@@ -10,7 +10,7 @@ import { useSocket } from '../../hooks/useSocket';
 import styles from '../../styles/Recognize.module.css';
 
 export default function RecognizeContainer({ onNavigate }) {
-    const { emitFrame, processedSrc, socketError } = useSocket('/');
+    const { emitFrame, processedSrc, socketError } = useSocket();
     const {
         capturing,
         status,
