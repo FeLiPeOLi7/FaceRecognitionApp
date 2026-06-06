@@ -2,13 +2,15 @@ import { useEffect, useRef, useState } from 'react';
 import { io } from 'socket.io-client';
 
 export function useSocket(serverUrl = '/') {
-    const socketRef = useRef(null);
-    const [processedSrc, setProcessedSrc] = useState('');
-    const [socketError, setSocketError] = useState(false);
+    const socketRef = useRef(null); // Socket reference
+    const [processedSrc, setProcessedSrc] = useState(''); // Ref to show processed img
+    const [socketError, setSocketError] = useState(false); // Error status
 
     useEffect(() => {
-        socketRef.current = io(serverUrl, { autoConnect: true });
+        // Starts socket connection with the server
+        socketRef.current = io(serverUrl);
 
+        // Waits for the server to send the processed event
         socketRef.current.on('processed', (data) => {
             const blob = new Blob([data], { type: 'image/jpeg' });
             setProcessedSrc(URL.createObjectURL(blob));
