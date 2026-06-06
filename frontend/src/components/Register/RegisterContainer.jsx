@@ -31,13 +31,13 @@ export default function RegisterContainer({ onNavigate }) {
         formData.append('image', image);
 
         try {
-            const response = await fetch('/registered', {
+            const response = await fetch('http://localhost:5000/registered', {
                 method: 'POST',
                 body: formData,
             });
 
             if (response.ok) {
-                setStatus('Enrollment concluído! Face registrada no Ground-Truth.');
+                setStatus('Enrollment concluído! Face registrada');
                 setName('');
                 setConsent(false);
                 setImage(null);
