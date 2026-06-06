@@ -216,3 +216,8 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+CHAT.md
+implementation_plan.md
+faces.db
+db_key.key
