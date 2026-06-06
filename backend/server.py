@@ -163,9 +163,6 @@ def handle_frame(data):
 
 if __name__ == "__main__":
     database.init_db()
-    database.delete_person(user_id=1)
-    database.delete_person(user_id=2)
-    database.delete_person(user_id=3)
     print("\n" + "="*60)
     print(" BACKEND SERVER ACTIVE (Flask + SocketIO + Eventlet)")
     print(" REST Endpoint: http://localhost:5000/registered")
