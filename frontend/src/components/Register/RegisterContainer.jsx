@@ -30,6 +30,10 @@ export default function RegisterContainer({ onNavigate }) {
         formData.append('consent', consent);
         formData.append('image', image);
 
+        console.log("Name: " + name);
+        console.log("Consent: " + consent);
+        console.log(image);
+
         try {
             const response = await fetch('/registered', {
                 method: 'POST',
