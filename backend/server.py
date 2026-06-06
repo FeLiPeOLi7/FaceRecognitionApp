@@ -2,8 +2,9 @@ import face_recognition
 import cv2
 import numpy as np
 import database
-from flask import Flask, render_template, request, send_from_directory
+from flask import Flask, request, jsonify
 from flask_socketio import SocketIO, emit
+from flask_cors import CORS
 import os
 from typing import Any
 import io
@@ -46,104 +47,202 @@ def process_frame_bytes(image_bytes: bytes, resize_scale: float = 0.6) -> bytes:
     _, jpg = cv2.imencode('.jpg', frame, [int(cv2.IMWRITE_JPEG_QUALITY), 80])
     return jpg.tobytes()
 
+# app = Flask(__name__)
+# app.config["SECRET_KEY"] = "dev"
+#
+# # Habilita o CORS de forma ampla para que o Vite (porta 5173) consiga se comunicar com o Flask (porta 5000)
+# CORS(app, resources={r"/*": {"origins": "*"}})
+# socketio = SocketIO(app, cors_allowed_origins='*', async_mode='eventlet')
+#
+# UPLOAD_FOLDER = "uploads"
+#
+# os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+#
+#
+# def register_face(img_path, name) -> None:
+#     img = face_recognition.load_image_file(img_path)
+#     encodings = face_recognition.face_encodings(img)
+#
+#     if len(encodings) == 0:
+#         print("Não foi detectado nenhuma cara para cadastro.")
+#         return
+#     elif len(encodings) > 1:
+#         print("Foi detectado mais de uma face para o cadastro.")
+#         return
+#
+#     face_encoding = encodings[0]
+#
+#     user_id = database.save_face(name, face_encoding)
+#     total = database.count_people()
+#     print(f"Pessoa cadastrada. user_id={user_id}. total_pessoas={total}")
+#
+#
+# @app.route("/")
+# def home():
+#     return render_template("index.html")
+#
+#
+# @app.route("/register")
+# def register():
+#     return render_template("register.html")
+#
+#
+# @app.route("/registered", methods=["POST"])
+# def registered():
+#     name = request.form["name"]
+#
+#     if name is None:
+#         return "Name required", 400
+#
+#     image = request.files["image"]
+#
+#     if image is None:
+#         return "Image required", 400
+#
+#     consent = request.form.get("consent")
+#
+#     if consent is None:
+#         return "Consent required", 400
+#
+#     filepath = os.path.join(UPLOAD_FOLDER, image.filename)
+#
+#     image.save(filepath)
+#
+#     print(f"Name: {name}")
+#
+#     print(f"Saved: {filepath}")
+#
+#     # Register the face
+#     register_face(filepath, name)
+#
+#     if os.path.exists(filepath):
+#         os.remove(filepath)
+#
+#     return f"Image received: {image.filename}"
+#
+#
+# @app.route("/recognize")
+# def recognize():
+#     return render_template("recognize.html")
+#
+#
+# @app.route('/scripts/<path:filename>')
+# def serve_scripts(filename: str):
+#     return send_from_directory('scripts', filename)
+#
+#
+# @socketio.on('frame')
+# def handle_frame(data):
+#     try:
+#         if isinstance(data, dict) and 'image_b64' in data:
+#             image_bytes = base64.b64decode(data['image_b64'])
+#         elif isinstance(data, (bytes, bytearray)):
+#             image_bytes = bytes(data)
+#         else:
+#             raise ValueError(f'Unsupported frame payload type: {type(data)}')
+#
+#         processed = process_frame_bytes(image_bytes)
+#         emit('processed', processed)
+#     except Exception as e:
+#         print('Error processing frame:', e)
+#
+#
+# if __name__ == "__main__":
+#     database.init_db()
+#     print("Starting Flask+SocketIO server on http://0.0.0.0:5000")
+#     socketio.run(app, host="0.0.0.0", port=5000)
+
 app = Flask(__name__)
 app.config["SECRET_KEY"] = "dev"
+
+# Enable CORS for frontend cross-origin requests
+CORS(app, resources={r"/*": {"origins": "*"}})
 socketio = SocketIO(app, cors_allowed_origins='*', async_mode='eventlet')
 
 UPLOAD_FOLDER = "uploads"
-
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 
-def register_face(img_path, name) -> None:
+def register_face(img_path, name) -> bool:
+    """Extracts encodings and persists them to the Ground-Truth database. Returns success/failure."""
     img = face_recognition.load_image_file(img_path)
     encodings = face_recognition.face_encodings(img)
 
     if len(encodings) == 0:
-        print("Não foi detectado nenhuma cara para cadastro.")
-        return
+        print("[ENROLLMENT ERROR] No faces detected in the provided image.")
+        return False
     elif len(encodings) > 1:
-        print("Foi detectado mais de uma face para o cadastro.")
-        return
+        print("[ENROLLMENT ERROR] Multiple faces detected. Please provide an isolated portrait.")
+        return False
 
     face_encoding = encodings[0]
-
     user_id = database.save_face(name, face_encoding)
     total = database.count_people()
-    print(f"Pessoa cadastrada. user_id={user_id}. total_pessoas={total}")
-
-
-@app.route("/")
-def home():
-    return render_template("index.html")
-
-
-@app.route("/register")
-def register():
-    return render_template("register.html")
+    print(f"[ENROLLMENT SUCCESS] {name} registered. ID={user_id}. Database total={total}")
+    return True
 
 
 @app.route("/registered", methods=["POST"])
 def registered():
-    name = request.form["name"]
-
-    if name is None:
-        return "Name required", 400
-
-    image = request.files["image"]
-
-    if image is None:
-        return "Image required", 400
-
+    """REST endpoint for biometric enrollment (Upload or Camera Capture)"""
+    name = request.form.get("name")
     consent = request.form.get("consent")
 
-    if consent is None:
-        return "Consent required", 400
+    if not name:
+        return jsonify({"error": "The 'name' field is required."}), 400
 
-    filepath = os.path.join(UPLOAD_FOLDER, image.filename)
+    if not consent or consent.lower() != 'true':
+        return jsonify({"error": "Legal biometric consent (LGPD) was not provided."}), 400
 
+    if "image" not in request.files:
+        return jsonify({"error": "Binary image file was not uploaded."}), 400
+
+    image = request.files["image"]
+    if image.filename == '':
+        return jsonify({"error": "Invalid filename."}), 400
+
+    # Fallback name for React canvas webcam blobs
+    filename = image.filename if image.filename else "capture.png"
+    filepath = os.path.join(UPLOAD_FOLDER, filename)
     image.save(filepath)
 
-    print(f"Name: {name}")
+    print(f"[REGISTRATION REQUEST] Name: {name} | Temporary file: {filepath}")
 
-    print(f"Saved: {filepath}")
+    # Process face vectorization
+    success = register_face(filepath, name)
 
-    # Register the face
-    register_face(filepath, name)
-
+    # Garbage collection
     if os.path.exists(filepath):
         os.remove(filepath)
 
-    return f"Image received: {image.filename}"
-
-
-@app.route("/recognize")
-def recognize():
-    return render_template("recognize.html")
-
-
-@app.route('/scripts/<path:filename>')
-def serve_scripts(filename: str):
-    return send_from_directory('scripts', filename)
+    if success:
+        return jsonify({"status": "success", "message": f"Biometric profile for {name} saved successfully."}), 200
+    else:
+        return jsonify({"status": "error", "message": "Could not extract a clean biometric template."}), 422
 
 
 @socketio.on('frame')
 def handle_frame(data):
+    """Continuous low-latency WebSockets processing loop (5 FPS)"""
     try:
         if isinstance(data, dict) and 'image_b64' in data:
             image_bytes = base64.b64decode(data['image_b64'])
         elif isinstance(data, (bytes, bytearray)):
             image_bytes = bytes(data)
         else:
-            raise ValueError(f'Unsupported frame payload type: {type(data)}')
+            raise ValueError(f'Unsupported payload structure: {type(data)}')
 
         processed = process_frame_bytes(image_bytes)
         emit('processed', processed)
     except Exception as e:
-        print('Error processing frame:', e)
+        print('[SOCKET ERROR] Failure in video loop cycle:', e)
 
 
 if __name__ == "__main__":
     database.init_db()
-    print("Starting Flask+SocketIO server on http://0.0.0.0:5000")
-    socketio.run(app, host="0.0.0.0", port=5000)
+    print("\n" + "="*60)
+    print(" BACKEND SERVER ACTIVE (Flask + SocketIO + Eventlet)")
+    print(" REST Endpoint: http://localhost:5000/registered")
+    print(" WebSocket Channel active listening to event: 'frame'")
+    print("="*60 + "\n")
+    socketio.run(app, host="0.0.0.0", port=5000, log_output=False)
