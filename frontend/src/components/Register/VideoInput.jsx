@@ -78,11 +78,11 @@ export default function VideoInput({ onFrameCaptured }) {
             </div>
 
             {!hasSnapshot ? (
-                <button type="button" onClick={takeSnapshot} className={styles.actionButton} style={{ backgroundColor: 'var(--color-primary)', color: 'white' }}>
+                <button type="button" onClick={takeSnapshot} className={styles.actionButtonPrimary}>
                     Tirar Foto
                 </button>
             ) : (
-                    <button type="button" onClick={resetSnapshot} className={styles.actionButton} style={{ backgroundColor: 'var(--color-danger)', color: 'white' }}>
+                    <button type="button" onClick={resetSnapshot} className={styles.actionSecondary}>
                         Recapturar
                     </button>
                 )}

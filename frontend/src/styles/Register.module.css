@@ -78,8 +78,6 @@
     cursor: pointer;
     box-shadow: var(--shadow);
     transition: opacity 0.2s ease, transform 0.1s ease;
-    
-    /* Centralização no fluxo do bloco */
     display: block;
     margin-left: auto;
     margin-right: auto;
@@ -92,7 +90,7 @@
 }
 
 .actionButton:active {
-    transform: scale(0.98);
+    transform: scale(0.9);
 }
 
 .actionButtonPrimary {
