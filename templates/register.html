@@ -8,7 +8,7 @@
     <h2>Register Face</h2>
 
     <form
-        action="/register"
+        action="/registered"
         method="POST"
         enctype="multipart/form-data"
     >
@@ -45,31 +45,12 @@
         </button>
     </form>
 
-    <script>
-
-    document
-    .getElementById("registerForm")
-    .addEventListener(
-        "submit",
-        function(event){
-
-            let consent =
-                document.getElementById(
-                    "consent"
-                );
-
-            if(!consent.checked){
-
-                event.preventDefault();
-
-                alert(
-                    "Consent is required to register facial biometric data."
-                );
-            }
-        }
-    );
-
-    </script>
+    <br>
+    
+    <button type="button"
+        onclick="window.location.href='/'">
+        Home
+    </button>
 
 </body>
 </html>
