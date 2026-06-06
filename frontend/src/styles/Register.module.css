@@ -68,3 +68,39 @@
 .submitButton:hover {
     opacity: 0.9;
 }
+
+.actionButton {
+    padding: var(--space-2) var(--space-4);
+    border: none;
+    border-radius: var(--radius-small);
+    font-size: var(--font-size-small);
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: var(--shadow);
+    transition: opacity 0.2s ease, transform 0.1s ease;
+    
+    /* Centralização no fluxo do bloco */
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+    margin-top: var(--space-2);
+    margin-bottom: var(--space-2);
+}
+
+.actionButton:hover {
+    opacity: 0.9;
+}
+
+.actionButton:active {
+    transform: scale(0.98);
+}
+
+.actionButtonPrimary {
+    background-color: var(--color-primary);
+    color: var(--color-font-secondary);
+}
+
+.actionButtonSecondary {
+    background-color: var(--color-danger);
+    color: var(--color-font-secondary);
+}
