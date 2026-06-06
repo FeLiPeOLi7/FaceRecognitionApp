@@ -42,7 +42,7 @@ export default function RegisterContainer({ onNavigate }) {
             });
 
             if (response.ok) {
-                setStatus('Enrollment concluído! Face registrada');
+                setStatus('Registro concluído! Face registrada');
                 setName('');
                 setConsent(false);
                 setImage(null);
