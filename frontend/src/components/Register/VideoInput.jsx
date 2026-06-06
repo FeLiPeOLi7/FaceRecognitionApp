@@ -4,8 +4,8 @@ import styles from '../../styles/Register.module.css';
 export default function VideoInput({ onFrameCaptured }) {
     const videoRef = useRef(null);
     const canvasRef = useRef(null);
-    const [stream, setStream] = useState(null);
     const [hasSnapshot, setHasSnapshot] = useState(false);
+    const streamRef = useRef(null);
 
     useEffect(() => {
         async function initCamera() {
@@ -14,7 +14,9 @@ export default function VideoInput({ onFrameCaptured }) {
                     video: { width: 640, height: 480, facingMode: 'user' },
                     audio: false
                 });
-                setStream(mediaStream);
+
+                streamRef.current = mediaStream;
+
                 if (videoRef.current) {
                     videoRef.current.srcObject = mediaStream;
                 }
@@ -22,14 +24,15 @@ export default function VideoInput({ onFrameCaptured }) {
                 console.error("Erro ao acessar a câmera para registro:", err);
             }
         }
+
         initCamera();
 
         return () => {
-            if (stream) {
-                stream.getTracks().forEach(track => track.stop());
+            if (streamRef.current) {
+                streamRef.current.getTracks().forEach(track => track.stop());
             }
         };
-    });
+    }, []);
 
     const takeSnapshot = () => {
         if (!videoRef.current || !canvasRef.current) return;
@@ -79,10 +82,10 @@ export default function VideoInput({ onFrameCaptured }) {
                     Tirar Foto
                 </button>
             ) : (
-                <button type="button" onClick={resetSnapshot} className={styles.actionButton} style={{ backgroundColor: 'var(--color-danger)', color: 'white' }}>
-                    Recapturar
-                </button>
-            )}
+                    <button type="button" onClick={resetSnapshot} className={styles.actionButton} style={{ backgroundColor: 'var(--color-danger)', color: 'white' }}>
+                        Recapturar
+                    </button>
+                )}
         </div>
     );
 }
