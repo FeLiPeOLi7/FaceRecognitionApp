@@ -19,8 +19,8 @@
 }
 
 .cardLarge {
-    max-width: 680px;
-    padding: var(--space-4);
+    max-width: 560px;
+    padding: var(--space-5);
 }
 
 .statusMessage {
@@ -32,7 +32,7 @@
 
 .backButton {
     margin-top: var(--space-3);
-    background-color: var(--color-neutral);
+    background-color: var(--color-dark-neutral);
     color: var(--color-font-secondary);
     border: none;
     padding: var(--space-2) var(--space-3);
@@ -40,9 +40,9 @@
     cursor: pointer;
     width: 100%;
     font-weight: bold;
-    transition: background-color 0.2s;
+    transition: opacity 0.2s;
 }
 
 .backButton:hover {
-    background-color: var(--color-neutral-hover);
+    opacity: 0.8;
 }

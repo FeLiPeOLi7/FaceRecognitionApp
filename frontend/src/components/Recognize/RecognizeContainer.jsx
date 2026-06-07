@@ -23,13 +23,13 @@ export default function RecognizeContainer({ onNavigate }) {
 
     useEffect(() => {
         return () => stopCapture();
-    }, []);
+    }, [stopCapture]);
 
     useEffect(() => {
         if (socketError) {
             setStatus('Erro de conexão com o barramento WebSockets.');
         }
-    }, [socketError]);
+    }, [socketError, setStatus]);
 
     const handleStart = () => {
         startCapture((base64Frame) => {
@@ -40,7 +40,7 @@ export default function RecognizeContainer({ onNavigate }) {
     return (
         <PageWrapper>
             <Card isLarge={true}>
-                <h1 className={styles.title}>Reconhecimento Facial Contínuo</h1>
+                <h1 className={styles.title}>Reconhecimento Facial</h1>
 
                 <VideoCanvasHidden videoRef={videoElementRef} canvasRef={canvasElementRef} />
                 <VideoDisplay imageSrc={processedSrc} />

@@ -5,14 +5,14 @@ export default function RegisterModeSelector({ mode, onModeChange }) {
         <div className={styles.modeSelector}>
             <button
                 type="button"
-                className={mode === 'file' ? styles.modeButtonActive : styles.modeButton}
+                className={`${styles.modeButton} ${mode === 'file' ? styles.modeButtonActive : ''}`}
                 onClick={() => onModeChange('file')}
             >
                 Upload de Arquivo
             </button>
             <button
                 type="button"
-                className={mode === 'video' ? styles.modeButtonActive : styles.modeButton}
+                className={`${styles.modeButton} ${mode === 'video' ? styles.modeButtonActive : ''}`}
                 onClick={() => onModeChange('video')}
             >
                 Capturar via Câmera
