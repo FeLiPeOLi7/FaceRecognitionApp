@@ -23,13 +23,13 @@ export default function RecognizeContainer({ onNavigate }) {
 
     useEffect(() => {
         return () => stopCapture();
-    }, [stopCapture]);
+    }, []);
 
     useEffect(() => {
         if (socketError) {
             setStatus('Erro de conexão com o barramento WebSockets.');
         }
-    }, [socketError, setStatus]);
+    }, [socketError]);
 
     const handleStart = () => {
         startCapture((base64Frame) => {
