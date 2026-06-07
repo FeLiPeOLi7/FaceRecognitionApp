@@ -168,4 +168,4 @@ if __name__ == "__main__":
     print(" REST Endpoint: http://localhost:5000/registered")
     print(" WebSocket Channel active listening to event: 'frame'")
     print("="*60 + "\n")
-    socketio.run(app, host="0.0.0.0", port=5000, log_output=False)
+    socketio.run(app, host="0.0.0.0", port=5000, log_output=False, certfile="localhost+3.pem", keyfile="localhost+3-key.pem")
