@@ -165,7 +165,12 @@ if __name__ == "__main__":
     database.init_db()
     print("\n" + "="*60)
     print(" BACKEND SERVER ACTIVE (Flask + SocketIO + Eventlet)")
-    print(" REST Endpoint: http://localhost:5000/registered")
+    print(" REST Endpoint: http://127.0.0.1:5000/registered")
     print(" WebSocket Channel active listening to event: 'frame'")
     print("="*60 + "\n")
-    socketio.run(app, host="0.0.0.0", port=5000, log_output=False)
+
+    socketio.run(
+        app, 
+        host="127.0.0.1", 
+        port=5000
+    )
