@@ -1,0 +1,154 @@
+.title {
+    font-size: var(--font-size-large);
+    color: var(--color-font);
+    margin-bottom: var(--space-3);
+}
+
+.displayWrapper {
+    width: 100%;
+    border-radius: var(--radius-normal);
+    overflow: hidden;
+    min-height: 380px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--color-border);
+    box-shadow: var(--shadow);
+    position: relative;
+}
+
+.displayText {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 10;
+    font-size: var(--font-size-small);
+    color: var(--color-font);
+    font-weight: bold;
+    text-align: center;
+    pointer-events: none; /* Impede que o texto bloqueie cliques na região */
+}
+
+.processedImage {
+    width: 80%;
+    height: auto;
+    display: block;
+}
+
+.controlsRow {
+    margin-top: var(--space-4);
+    display: flex;
+    justify-content: center;
+    gap: var(--space-2);
+}
+
+.btnControl {
+    padding: var(--space-2) var(--space-4);
+    border: none;
+    border-radius: var(--radius-small);
+    cursor: pointer;
+    font-weight: bold;
+    font-size: var(--font-size-normal);
+    transition: opacity 0.2s, background-color 0.2s;
+    box-shadow: var(--shadow);
+}
+
+.btnControl:hover:not(:disabled) {
+    opacity: 0.9;
+}
+
+.btnControl:disabled {
+    background-color: var(--color-border);
+    cursor: not-allowed;
+    color: var(--color-font);
+    opacity: 0.5;
+    box-shadow: none;
+}
+
+.start {
+    background-color: var(--color-success);
+    color: var(--color-font-secondary);
+}
+
+.stop {
+    background-color: var(--color-danger);
+    color: var(--color-font-secondary);
+}
+
+.home {
+    background-color: var(--color-dark-neutral);
+    color: var(--color-font-secondary);
+}
+
+.modeSelector {
+    display: flex;
+    gap: var(--space-2);
+    margin-bottom: var(--space-3);
+}
+
+.modeButton {
+    flex: 1;
+    padding: var(--space-2);
+    border: 1px solid var(--color-border);
+    background-color: var(--color-bg-complementary);
+    color: var(--color-font);
+    border-radius: var(--radius-small);
+    cursor: pointer;
+    font-weight: bold;
+    font-size: var(--font-size-small);
+    transition: all 0.2s ease;
+}
+
+.modeButtonActive {
+    background-color: var(--color-primary);
+    color: var(--color-font-secondary);
+    border-color: var(--color-primary);
+}
+
+.videoCaptureContainer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-2);
+    margin-bottom: var(--space-3);
+}
+
+.cameraPreviewWrapper {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    background-color: #000000;
+    border-radius: var(--radius-small);
+    overflow: hidden;
+    border: 1px solid var(--color-border);
+    position: relative;
+}
+
+.videoElement {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.capturedCanvasPreview {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+.actionButton {
+    padding: var(--space-2) var(--space-4);
+    border: none;
+    border-radius: var(--radius-small);
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: var(--shadow);
+    transition: opacity 0.2s;
+}
+
+.actionButton:hover {
+    opacity: 0.9;
+}

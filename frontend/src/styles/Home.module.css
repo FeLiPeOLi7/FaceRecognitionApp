@@ -1,0 +1,43 @@
+.title {
+    font-size: var(--font-size-xlarge);
+    color: var(--color-font);
+    margin-bottom: var(--space-2);
+}
+
+.subtitle {
+    color: var(--color-font);
+    opacity: 0.8;
+    font-size: var(--font-size-normal);
+    margin-bottom: var(--space-5);
+}
+
+.button {
+    display: block;
+    width: 100%;
+    margin-top: var(--space-3);
+    padding: var(--space-3) 0;
+    color: var(--color-font-secondary);
+    border-radius: var(--radius-normal);
+    border: none;
+    font-size: var(--font-size-normal);
+    font-weight: bold;
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.1s;
+    box-shadow: var(--shadow);
+}
+
+.button:hover {
+    opacity: 0.9;
+}
+
+.button:active {
+    transform: scale(0.98);
+}
+
+.register {
+    background-color: var(--color-success);
+}
+
+.recognize {
+    background-color: var(--color-primary);
+}
