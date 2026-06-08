@@ -60,8 +60,8 @@ export default function VideoInput({ onFrameCaptured }) {
     };
 
     return (
-        <div className={styles.videoCaptureContainer}>
-            <label className={styles.label}>Posicione seu rosto:</label>
+        <div className={styles.videocapturecontainer}>
+            <h1 className={styles.label}>Posicione seu rosto:</h1>
             <div className={styles.cameraPreviewWrapper}>
                 <video 
                     ref={videoRef} 
@@ -77,15 +77,18 @@ export default function VideoInput({ onFrameCaptured }) {
                 ></canvas>
             </div>
 
-            {!hasSnapshot ? (
-                <button type="button" onClick={takeSnapshot} className={styles.actionButtonPrimary}>
-                    Tirar Foto
-                </button>
-            ) : (
-                    <button type="button" onClick={resetSnapshot} className={styles.actionSecondary}>
-                        Recapturar
+            <div className={styles.snapshotWrapper}>
+                {!hasSnapshot ? (
+                    <button type="button" onClick={takeSnapshot} className={styles.actionButtonPrimary}>
+                        Tirar Foto
                     </button>
-                )}
+                ) : (
+                        <button type="button" onClick={resetSnapshot} className={styles.actionSecondary}>
+                            Recapturar
+                        </button>
+                    )}
+            </div>
+
         </div>
     );
 }

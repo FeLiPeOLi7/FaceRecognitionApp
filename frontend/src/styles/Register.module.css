@@ -66,7 +66,7 @@
 }
 
 .submitButton:hover {
-    opacity: 0.9;
+    opacity: 0.8;
 }
 
 .actionButton {
@@ -101,4 +101,47 @@
 .actionButtonSecondary {
     background-color: var(--color-danger);
     color: var(--color-font-secondary);
+}
+
+.cameraPreviewWrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: solid 1px var(--color-dark-neutral);
+}
+
+.snapshotWrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: var(--space-2);
+    margin-bottom: var(--space-2);
+}
+
+.snapshotWrapper button {
+    border: solid 1px var(--color-dark-neutral);
+    background-color: var(--color-primary);
+    color: var(--color-font);
+}
+
+.modeContainer {
+    display: flex;
+    justify-content: center;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.modeSelector {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.modeButton {
+    width: 100%;
+    border: solid 1px var(--color-dark-neutral);
+}
+
+.modeButtonActive {
+    background-color: var(--color-primary);
 }
