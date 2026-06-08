@@ -27,24 +27,25 @@ export default function RegisterForm({ name, onNameChange, consent, onConsentCha
                 onChange={onConsentChange}
             />
 
-            <RegisterModeSelector
-                mode={insertMode}
-                onModeChange={handleModeChange}
-            />
-
-            {insertMode === 'file' ? (
-                <FileInput
-                    label="Upload da Face (.png/.jpg):"
-                    accept="image/*"
-                    onChange={(e) => onFileChange(e.target.files[0])}
-                    required
+            <div className={styles.modeContainer}>
+                <RegisterModeSelector
+                    mode={insertMode}
+                    onModeChange={handleModeChange}
                 />
-            ) : (
-                <VideoInput 
-                    onFrameCaptured={onFileChange}
-                />
-            )}
 
+                {insertMode === 'file' ? (
+                    <FileInput
+                        label="Upload da Face (.png/.jpg):"
+                        accept="image/*"
+                        onChange={(e) => onFileChange(e.target.files[0])}
+                        required
+                    />
+                ) : (
+                        <VideoInput 
+                            onFrameCaptured={onFileChange}
+                        />
+                    )}
+            </div>
             <button type="submit" className={styles.submitButton}>
                 Finalizar Cadastro
             </button>
