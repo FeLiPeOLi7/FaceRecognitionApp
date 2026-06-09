@@ -34,38 +34,63 @@ export function useCamera(fps = 5) {
 
         setStatus('Iniciando câmera...');
         try {
-            // Requests and setup Camera
-            const stream = await navigator.mediaDevices.getUserMedia({
-                video: { width: 1280, height: 720, facingMode: 'user' },
+            // 1. ENGENHARIA DE PAYLOAD: Detecta orientação para definir a resolução ideal
+            const isMobilePortrait = window.innerHeight > window.innerWidth;
+            const constraints = {
+                video: {
+                    width: isMobilePortrait ? { ideal: 720 } : { ideal: 1280 },
+                    height: isMobilePortrait ? { ideal: 1280 } : { ideal: 720 },
+                    facingMode: 'user',
+                },
                 audio: false,
-            });
+            };
 
+            const stream = await navigator.mediaDevices.getUserMedia(constraints);
             streamRef.current = stream;
 
             if (videoElementRef.current) {
                 videoElementRef.current.srcObject = stream;
             }
 
+            // Aguarda o vídeo carregar os metadados para sabermos o tamanho real entregue pelo hardware
+            await new Promise((resolve) => {
+                if (videoElementRef.current) {
+                    videoElementRef.current.onloadedmetadata = () => resolve();
+                } else {
+                    resolve();
+                }
+            });
+
+            // 2. DIMENSIONAMENTO DINÂMICO: Extrai o tamanho real do track de vídeo
+            const videoTrack = stream.getVideoTracks()[0];
+            const { width: realWidth, height: realHeight } = videoTrack.getSettings();
+
+            // Ajusta o Canvas interno para ter a mesma resolução real da câmera
             if (canvasElementRef.current) {
-                canvasElementRef.current.width = 1280;
-                canvasElementRef.current.height = 720;
+                canvasElementRef.current.width = realWidth;
+                canvasElementRef.current.height = realHeight;
             }
 
             setCapturing(true);
-            setStatus(`Capturando a ${fps} FPS`);
+            setStatus(`Capturando video`);
 
             const ctx = canvasElementRef.current.getContext('2d');
 
-            // Draw image on the canvas and saves the image
+            // Loop de ticks (FPS) via setInterval
             timerIdRef.current = setInterval(() => {
-                if (!streamRef.current || frameInFlightRef.current || !videoElementRef.current || videoElementRef.current.readyState < 2) return;
+                if (
+                    !streamRef.current || 
+                        frameInFlightRef.current || 
+                        !videoElementRef.current || 
+                        videoElementRef.current.readyState < 2
+                ) return;
 
-                // Drawing
                 frameInFlightRef.current = true;
-                ctx.drawImage(videoElementRef.current, 0, 0, 1280, 720);
 
-                // Saving
-                // Signature: canvas.toBlob(callback, type, quality)
+                // Desenha a matriz do frame respeitando a resolução real do sensor
+                ctx.drawImage(videoElementRef.current, 0, 0, realWidth, realHeight);
+
+                // Serialização e envio do Payload binário convertido em Base64
                 canvasElementRef.current.toBlob((blob) => {
                     if (!blob) {
                         frameInFlightRef.current = false;
@@ -74,15 +99,15 @@ export function useCamera(fps = 5) {
 
                     const reader = new FileReader();
                     reader.onloadend = () => {
-                        // Removing image prefix
                         const result = String(reader.result || '');
                         const base64 = result.includes(',') ? result.split(',')[1] : '';
-                        // Send image to socket
+
+                        // Callback que dispara o evento pelo canal do Socket.IO
                         onFrameCallback(base64);
                         frameInFlightRef.current = false;
                     };
                     reader.readAsDataURL(blob);
-                }, 'image/jpeg', 0.85); // Pa
+                }, 'image/jpeg', 0.80); // Compressão em 80% de qualidade para otimizar vazão de rede
             }, intervalMs);
 
         } catch (err) {

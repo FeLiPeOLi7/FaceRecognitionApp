@@ -33,7 +33,7 @@
 .processedImage {
     width: 80%;
     height: auto;
-    display: block;
+    object-fit: contain;
 }
 
 .controlsRow {
@@ -155,18 +155,23 @@
 
 @media (max-width: 768px) {
     .cameraPreviewWrapper {
-        width: 90vw; 
-        aspect-ratio: 4 / 3; 
-        max-height: 40vh; 
+        width: 90vw;
+        aspect-ratio: 4 / 3;
+        max-height: 40vh;
     }
 
     .actionButton {
-        width: 90vw; 
-        padding: 1.8vh var(--space-4); 
-        font-size: var(--font-size-normal);
+        width: 90vw;
+        padding: 1.8vh var(--space-4);
+        font-size: var(--font-size-normal)
     }
 
     .videoCaptureContainer {
-        gap: 2vh; 
+        gap: 2vh;
+    }
+
+    .displayWrapper {
+        aspect-ratio: 9 / 16;
+        max-height: 70vh;
     }
 }

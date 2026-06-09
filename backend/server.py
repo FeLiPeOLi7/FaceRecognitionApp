@@ -10,6 +10,7 @@ from typing import Any
 import io
 import base64
 from PIL import Image
+import unicodedata
 #import time
 
 client_cache = {}
@@ -64,14 +65,34 @@ def process_frame_bytes(image_bytes: bytes, sid: str, resize_scale: float = 0.20
         bottom = int(bottom * scale)
         left = int(left * scale)
 
-        cv2.rectangle(frame, (left, top), (right, bottom), (0, 0, 255), 2)
-        cv2.rectangle(frame, (left, bottom - 20), (right, bottom), (0, 0, 255), cv2.FILLED)
-        cv2.putText(frame, name, (left + 6, bottom - 6), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255,255,255), 1)
+        normalized_name = normalize_text(name)
+        font_size = 1.2
+        max_size = 14
+        if len(name) > max_size:
+            parts = normalized_name.split()
+            short_name = parts[0]
+
+            for part in parts[1:]:
+                if len(short_name) + len(part) + 1 <= max_size:
+                    short_name += " " + part
+                else:
+                    break
+
+            normalized_name = short_name
+
+
+        cv2.rectangle(frame, (left, top), (right, bottom), (0, 0, 255), 3)
+        cv2.rectangle(frame, (left, bottom - 40), (right, bottom), (0, 0, 255), cv2.FILLED)
+        cv2.putText(frame, normalized_name, (left + 6, bottom - 6), cv2.FONT_HERSHEY_SIMPLEX, font_size, (255,255,255), 2)
 
     _, jpg = cv2.imencode('.jpg', frame, [int(cv2.IMWRITE_JPEG_QUALITY), 80])
     #end = time.perf_counter()
     #print(f"Frame: {(end-start)*1000:.2f} ms")
     return jpg.tobytes()
+
+def normalize_text(texto):
+    nfkd = unicodedata.normalize('NFKD', texto)
+    return "".join([c for c in nfkd if not unicodedata.combining(c)])
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = "dev"
