@@ -80,6 +80,15 @@ conda activate facerec
 
 # Navegue até a pasta do backend e execute o servidor
 cd backend
+
+# Instale a autoridade certificadora local no seu sistema
+mkcert -install
+
+# Gere os certificados válidos apontando para o seu IP Local
+# Substitua 'xxx.xxx.xx.x' pelo endereço IP real da sua máquina na rede local
+mkcert localhost 127.0.0.1 ::1 xxx.xxx.xx.x
+
+# Execute o Servidor
 python server.py
 ```
 
@@ -94,8 +103,8 @@ cd frontend
 # Instale os pacotes e a árvore de dependências
 npm install
 
-# Inicie o servidor de desenvolvimento
-npm run dev
+# Inicie o Host (Cliente)
+npm run dev -- --host
 ```
 
 ---
@@ -149,6 +158,12 @@ Fluxo do reconhecimento:
                                                                    ▼
        Annotated Display UI    ◄───[WebSocket Echo]────  Biometric Ground-Truth Match
 ```
+
+---
+
+ ## Possíveis Melhorias Futuras
+
+Como proposta de evolução para versões futuras do ecossistema, projeta-se a substituição do framework Flask por uma arquitetura baseada diretamente em sockets nativos. A migração para uma arquitetura de rede de baixo nível permitirá eliminar o overhead de polling introduzido pelas abstrações do Socket.IO, dando controle total sobre o tamanho da janela de recepção de buffers binários na camada de transporte. Além disso, planeja-se integrar melhorias substanciais na experiência do usuário (UX), como overlays de enquadramento dinâmico e uma melhoria no sistema de status, e adicionar uma camada de telemetria para medições em tempo real de latência, vazão e capacidade de conexões concorrentes do sistema. 
 
 ---
 
