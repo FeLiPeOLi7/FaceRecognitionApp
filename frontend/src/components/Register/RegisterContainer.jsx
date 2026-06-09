@@ -41,6 +41,8 @@ export default function RegisterContainer({ onNavigate }) {
                 body: formData,
             });
 
+            console.log(response)
+
             if (response.ok) {
                 setStatus('Registro concluído! Face registrada');
                 setName('');

@@ -5,6 +5,7 @@
 }
 
 .displayWrapper {
+    position: relative;
     width: 100%;
     border-radius: var(--radius-normal);
     overflow: hidden;
@@ -14,7 +15,6 @@
     justify-content: center;
     border: 1px solid var(--color-border);
     box-shadow: var(--shadow);
-    position: relative;
 }
 
 .displayText {
@@ -151,4 +151,22 @@
 
 .actionButton:hover {
     opacity: 0.9;
+}
+
+@media (max-width: 768px) {
+    .cameraPreviewWrapper {
+        width: 90vw; 
+        aspect-ratio: 4 / 3; 
+        max-height: 40vh; 
+    }
+
+    .actionButton {
+        width: 90vw; 
+        padding: 1.8vh var(--space-4); 
+        font-size: var(--font-size-normal);
+    }
+
+    .videoCaptureContainer {
+        gap: 2vh; 
+    }
 }
