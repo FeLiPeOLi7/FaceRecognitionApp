@@ -1,176 +1,228 @@
-import face_recognition
+#!/usr/bin/env python3
+"""
+Hybrid Face Recognition Server.
+- Flask (Port 5000): Handles biometric registration (Rest/HTTP).
+- Raw Sockets (Port 5001): Handles real-time frame processing for low-latency.
+"""
+
+import socket
+import threading
+import json
+import base64
+import os
+import io
+import re
+from typing import Tuple, Dict, Any
+import ssl
+from pathlib import Path
+
 import cv2
 import numpy as np
-import database
+import face_recognition
 from flask import Flask, request, jsonify
-from flask_socketio import SocketIO, emit
 from flask_cors import CORS
-import os
-from typing import Any
-import io
-import base64
 from PIL import Image
-#import time
 
-client_cache = {}
+import database
 
-RECOGNITION_INTERVAL = 5
+# Constants
+HOST = "0.0.0.0"
+FLASK_PORT = 5000
+SOCKET_PORT = 5001
+MAX_LISTEN_BACKLOG = 10
 
-def process_frame_bytes(image_bytes: bytes, sid: str, resize_scale: float = 0.20) -> bytes:
-    """Processa um frame (JPEG/PNG bytes) e retorna JPEG anotado.
-    Implementado inline para manter módulo único `server.py`.
-    """
-
-    # simple cache for multiple users
-    if sid not in client_cache:
-        client_cache[sid] = {
-            "frame_counter": 0,
-            "locations": [],
-            "names": []
-        }
-
-    cache = client_cache[sid]
-
-    #start = time.perf_counter()
-    img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
-    frame = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
-
-    # Prepare scaled frame for faster recognition
-    small = cv2.resize(frame, (0, 0), fx=resize_scale, fy=resize_scale)
-    rgb_small = cv2.cvtColor(small, cv2.COLOR_BGR2RGB)
-
-    if(cache["frame_counter"] == 0):
-        locations = face_recognition.face_locations(rgb_small)
-        encodings = face_recognition.face_encodings(rgb_small, locations)
-
-        names = []
-        for enc in encodings:
-            match = database.search_face(enc, threshold=0.6, k=1)
-            names.append(match["name"] if match else "Desconhecido")
-
-        cache["locations"] = locations
-        cache["names"] = names
-    else:
-        locations = cache["locations"]
-        names = cache["names"]
-
-    cache["frame_counter"] = (cache["frame_counter"] + 1) % RECOGNITION_INTERVAL
-
-    # Scale coordinates back to original frame size
-    scale = 1.0 / resize_scale
-    for (top, right, bottom, left), name in zip(locations, names):
-        top = int(top * scale)
-        right = int(right * scale)
-        bottom = int(bottom * scale)
-        left = int(left * scale)
-
-        cv2.rectangle(frame, (left, top), (right, bottom), (0, 0, 255), 2)
-        cv2.rectangle(frame, (left, bottom - 20), (right, bottom), (0, 0, 255), cv2.FILLED)
-        cv2.putText(frame, name, (left + 6, bottom - 6), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255,255,255), 1)
-
-    _, jpg = cv2.imencode('.jpg', frame, [int(cv2.IMWRITE_JPEG_QUALITY), 80])
-    #end = time.perf_counter()
-    #print(f"Frame: {(end-start)*1000:.2f} ms")
-    return jpg.tobytes()
-
-app = Flask(__name__)
-app.config["SECRET_KEY"] = "dev"
-
-# Enable CORS for frontend cross-origin requests
-CORS(app, resources={r"/*": {"origins": "*"}})
-socketio = SocketIO(app, cors_allowed_origins='*', async_mode='eventlet')
-
+# --- Creates temp upload folder ---
 UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
+# --- Recognition Logic ---
+from processing import process_frame_bytes, register_face
 
-def register_face(img_path, name) -> bool:
-    """Extracts encodings and persists them to the Ground-Truth database. Returns success/failure."""
-    img = face_recognition.load_image_file(img_path)
-    encodings = face_recognition.face_encodings(img)
+# --- Flask Server (Port 5000) ---
+app = Flask(__name__)
+CORS(app)
 
-    if len(encodings) == 0:
-        print("[ENROLLMENT ERROR] No faces detected in the provided image.")
-        return False
-    elif len(encodings) > 1:
-        print("[ENROLLMENT ERROR] Multiple faces detected. Please provide an isolated portrait.")
-        return False
-
-    face_encoding = encodings[0]
-    user_id = database.save_face(name, face_encoding)
-    total = database.count_people()
-    print(f"[ENROLLMENT SUCCESS] {name} registered. ID={user_id}. Database total={total}")
-    return True
-
+@app.route("/", methods=["GET"])
+def health():
+    return jsonify({"status": "hybrid_server_online", "flask_port": FLASK_PORT, "socket_port": SOCKET_PORT})
 
 @app.route("/registered", methods=["POST"])
 def registered():
-    """REST endpoint for biometric enrollment (Upload or Camera Capture)"""
     name = request.form.get("name")
     consent = request.form.get("consent")
 
-    if not name:
-        return jsonify({"error": "The 'name' field is required."}), 400
-
-    if not consent or consent.lower() != 'true':
-        return jsonify({"error": "Legal biometric consent (LGPD) was not provided."}), 400
+    if not name or consent != "true":
+        return jsonify({"error": "Name and consent are required."}), 400
 
     if "image" not in request.files:
-        return jsonify({"error": "Binary image file was not uploaded."}), 400
+        return jsonify({"error": "Image file required."}), 400
 
     image = request.files["image"]
-    if image.filename == '':
-        return jsonify({"error": "Invalid filename."}), 400
-
-    # Fallback name for React canvas webcam blobs
-    filename = image.filename if image.filename else "capture.png"
-    filepath = os.path.join(UPLOAD_FOLDER, filename)
+    filepath = os.path.join(UPLOAD_FOLDER, f"reg_{os.urandom(4).hex()}.png")
     image.save(filepath)
 
-    print(f"[REGISTRATION REQUEST] Name: {name} | Temporary file: {filepath}")
-
-    # Process face vectorization
     success = register_face(filepath, name)
-
-    # Garbage collection
     if os.path.exists(filepath):
         os.remove(filepath)
 
     if success:
-        return jsonify({"status": "success", "message": f"Biometric profile for {name} saved successfully."}), 200
-    else:
-        return jsonify({"status": "error", "message": "Could not extract a clean biometric template."}), 422
+        return jsonify({"status": "success", "message": f"{name} registered."}), 200
+    return jsonify({"status": "error", "message": "Failed to extract face."}), 422
 
+def run_flask():
+    print(f"[*] Flask server starting on port {FLASK_PORT}...")
+    app.run(host=HOST, port=FLASK_PORT, debug=False, use_reloader=False)
 
-@socketio.on('frame')
-def handle_frame(data):
-    """Continuous low-latency WebSockets processing loop (5 FPS)"""
+# --- Raw Socket Server (Port 5001) ---
+
+def parse_http_request(raw_request: bytes):
+    """Simple parser for the frame route."""
     try:
-        sid = request.sid
+        request_str = raw_request.decode('utf-8', errors='ignore') #Binary to string
+        parts = request_str.split('\r\n\r\n', 1)
+        headers_part = parts[0]
+        header_lines = headers_part.split('\r\n')
+        
+        # Method and Path
+        request_line = header_lines[0].split()
+        method = request_line[0] if len(request_line) > 0 else "UNKNOWN"
+        path = request_line[1] if len(request_line) > 1 else "/"
+        
+        # Headers
+        headers = {}
+        for line in header_lines[1:]:
+            if ':' in line:
+                k, v = line.split(':', 1)
+                headers[k.strip().lower()] = v.strip()
+        
+        # Body
+        body = raw_request[len(headers_part) + 4:] #+4 because of \r\n\r\n (gets everything after the header [i.e. the body])
+        return method, path, headers, body
+    except:
+        return None, None, {}, b""
 
-        if isinstance(data, dict) and 'image_b64' in data:
-            image_bytes = base64.b64decode(data['image_b64'])
-        elif isinstance(data, (bytes, bytearray)):
-            image_bytes = bytes(data)
+def build_http_response(status_code, status_text, content_type, body):
+    response = f"HTTP/1.1 {status_code} {status_text}\r\n"
+    response += f"Content-Type: {content_type}\r\n"
+    response += f"Content-Length: {len(body)}\r\n"
+    response += "Access-Control-Allow-Origin: *\r\n"
+    response += "Connection: close\r\n\r\n"
+    return response.encode() + body
+
+def handle_options_request() -> Tuple[int, str, bytes]:
+    """Handler para OPTIONS requests (CORS pre-flight)."""
+    response = f"HTTP/1.1 204 No Content\r\n"
+    response += f"Access-Control-Allow-Origin: *\r\n"
+    response += f"Access-Control-Allow-Methods: POST, OPTIONS\r\n"
+    response += "Access-Control-Allow-Headers: Content-Type\r\n"
+    response += "Access-Control-Max-Age: 86400\r\n"
+    response += "Content-Length: 0\r\n\r\n"
+
+    return response.encode()
+
+def handle_socket_client(client_socket, client_address):
+    try:
+        raw_data = b""
+
+        '''
+        While you dont have all the data, continue getting 4KB chunks. Ensuring that we will have all the packet in the final loop
+        '''
+        while True:
+            chunk = client_socket.recv(4096)
+            if not chunk: break
+            raw_data += chunk
+            if b'\r\n\r\n' in raw_data: # Do we have all the headers?
+                # Basic check for content-length to ensure full read
+                headers_str = raw_data.split(b'\r\n\r\n')[0].decode('utf-8', errors='ignore')
+                cl_match = re.search(r'content-length:\s*(\d+)', headers_str, re.I)
+                if cl_match:
+                    cl = int(cl_match.group(1)) #Content-Length
+                    if len(raw_data) >= raw_data.find(b'\r\n\r\n') + 4 + cl: #Do we have all the body + header?
+                        break
+                else: break 
+
+        method, path, headers, body = parse_http_request(raw_data)
+        
+
+        if method == 'OPTIONS':
+            # Pre-flight CORS request
+            response = handle_options_request()
+
+            client_socket.sendall(response)
+            return
+        elif method == "POST" and path == "/frame":
+            # Extract image (could be JSON or raw)
+            image_bytes = body
+            sid = f"{client_address[0]}:{client_address[1]}"
+            if 'application/json' in headers.get('content-type', ''):
+                data = json.loads(body.decode())
+                image_bytes = base64.b64decode(data['image_b64'])
+                sid = data["client_id"]
+            processed_jpeg = process_frame_bytes(image_bytes, sid)
+            
+            response = build_http_response(200, "OK", "image/jpeg", processed_jpeg)
+            client_socket.sendall(response)
         else:
-            raise ValueError(f'Unsupported payload structure: {type(data)}')
-
-        processed = process_frame_bytes(image_bytes, sid=sid)
-        emit('processed', processed)
+            resp = build_http_response(404, "Not Found", "application/json", b'{"error": "Route not found"}')
+            client_socket.sendall(resp)
     except Exception as e:
-        print('[SOCKET ERROR] Failure in video loop cycle:', e)
+        print(f"[Socket Error] {e}")
+    finally:
+        client_socket.close()
 
+def start_socket_server():    
+    """Inicia o servidor HTTP (com ou sem TLS/SSL)."""
+
+    #Creates our SOCKET (SOCK_STREAM enables TCP connection)
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+    #Re-uses the socket
+    server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+
+    protocol = "HTTP"
+
+    try:
+        #Estabilishs the sockets addr
+        server_socket.bind((HOST, SOCKET_PORT))
+        server_socket.listen(MAX_LISTEN_BACKLOG)
+
+        print("\n" + "="*60)
+        print(f" SERVIDOR {protocol} SOCKET ATIVO")
+        print(f" Endereço: {HOST}:{SOCKET_PORT}")
+        print("="*60 + "\n")
+
+        # Server is eternally waiting and accepting clients
+        while True:
+            try:
+                #accept() is a blocking function, so it waits the client accept to continue running the code
+                client_socket, client_address = server_socket.accept()
+
+                client_thread = threading.Thread(
+                    target=handle_socket_client,
+                    args=(
+                        client_socket,
+                        client_address
+                    ),
+                    daemon=True
+                )
+
+                client_thread.start()
+
+            except KeyboardInterrupt:
+                break
+
+    except Exception as e:
+        print(f"[ERROR] Server error: {e}")
+
+    finally:
+        print("\n[SHUTDOWN] Encerrando servidor...")
+        server_socket.close()
 
 if __name__ == "__main__":
     database.init_db()
-    print("\n" + "="*60)
-    print(" BACKEND SERVER ACTIVE (Flask + SocketIO + Eventlet)")
-    print(" REST Endpoint: http://127.0.0.1:5000/registered")
-    print(" WebSocket Channel active listening to event: 'frame'")
-    print("="*60 + "\n")
-
-    socketio.run(
-        app, 
-        host="127.0.0.1", 
-        port=5000
-    )
+    
+    # Start Socket Server in thread
+    threading.Thread(target=start_socket_server, daemon=True).start()
+    
+    # Start Flask Server in main thread
+    run_flask()
