@@ -194,6 +194,7 @@ dependencies:
       - sqlite-vec
       - flask
       - flask-socketio
+      - flask-cors
       - eventlet
       - pillow
       - cryptography
