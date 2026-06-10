@@ -33,7 +33,7 @@ export function useSocket(serverUrl = '/') {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    //client_id: clientId,
+                    client_id: clientId,
                     image_b64: base64Data,
                 }),
             });

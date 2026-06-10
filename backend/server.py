@@ -141,15 +141,6 @@ def handle_socket_client(client_socket, client_address):
 
         if method == 'OPTIONS':
             # Pre-flight CORS request
-            # response = (
-            #     "HTTP/1.1 204 No Content\r\n"
-            #     "Access-Control-Allow-Origin: *\r\n"
-            #     "Access-Control-Allow-Methods: POST, OPTIONS\r\n"
-            #     "Access-Control-Allow-Headers: Content-Type\r\n"
-            #     "Access-Control-Max-Age: 86400\r\n"
-            #     "Content-Length: 0\r\n"
-            #     "\r\n"
-            # )
             response = handle_options_request()
 
             client_socket.sendall(response)
@@ -157,11 +148,11 @@ def handle_socket_client(client_socket, client_address):
         elif method == "POST" and path == "/frame":
             # Extract image (could be JSON or raw)
             image_bytes = body
+            sid = f"{client_address[0]}:{client_address[1]}"
             if 'application/json' in headers.get('content-type', ''):
                 data = json.loads(body.decode())
                 image_bytes = base64.b64decode(data['image_b64'])
-            
-            sid = f"{client_address[0]}:{client_address[1]}"
+                sid = data["client_id"]
             processed_jpeg = process_frame_bytes(image_bytes, sid)
             
             response = build_http_response(200, "OK", "image/jpeg", processed_jpeg)
@@ -175,15 +166,6 @@ def handle_socket_client(client_socket, client_address):
         client_socket.close()
 
 def start_socket_server(use_ssl: bool = False):    
-    # print(f"[*] Raw Socket server starting on port {SOCKET_PORT}...")
-    # server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    # server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    # server.bind((HOST, SOCKET_PORT))
-    # server.listen(5)
-    
-    # while True:
-    #     client, addr = server.accept()
-    #     threading.Thread(target=handle_socket_client, args=(client, addr), daemon=True).start()
     """Inicia o servidor HTTP (com ou sem TLS/SSL)."""
 
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

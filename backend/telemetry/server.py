@@ -297,11 +297,11 @@ def handle_socket_client(client_socket, client_address):
             
         elif method == "POST" and path == "/frame":
             image_bytes = body
+            sid = f"{client_address[0]}:{client_address[1]}"
             if 'application/json' in headers.get('content-type', ''):
                 data = json.loads(body.decode())
                 image_bytes = base64.b64decode(data['image_b64'])
-            
-            sid = f"{client_address[0]}:{client_address[1]}"
+                sid = data['client_id']
             
             start_time = time.perf_counter()
             processed_jpeg = process_frame_bytes(image_bytes, sid)
