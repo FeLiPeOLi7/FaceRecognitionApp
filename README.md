@@ -1,4 +1,4 @@
-# Face Recognition Web App (V2.2.0)
+# Face Recognition Web App (V2.4.0)
 
 Sistema web de reconhecimento facial utilizando uma arquitetura desacoplada com Flask no backend e React no frontend, focado em alta performance, componentização e conformidade com a LGPD.
 
