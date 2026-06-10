@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { getBackendUrl } from '../config/backendUrl';
+import { getSocketBackendUrl } from '../config/backendUrl';
 
 export function useSocket(serverUrl = '/') {
     const [processedSrc, setProcessedSrc] = useState(''); // Ref to show processed img
@@ -10,7 +10,7 @@ export function useSocket(serverUrl = '/') {
     useEffect(() => {
         const resolvedServerUrl = serverUrl && serverUrl !== '/'
             ? serverUrl
-            : getBackendUrl();
+            : getSocketBackendUrl();
         
         backendUrlRef.current = resolvedServerUrl;
     }, [serverUrl]);

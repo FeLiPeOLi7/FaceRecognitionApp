@@ -1,4 +1,4 @@
-export function getBackendUrl() {
+export function getSocketBackendUrl() {
     const configuredUrl = import.meta.env.VITE_BACKEND_URL
         || import.meta.env.VITE_SOCKET_URL
         || import.meta.env.VITE_API_URL;
@@ -14,3 +14,10 @@ export function getBackendUrl() {
 
     return 'http://localhost:5001';
 }
+
+export const getFlaskBackendUrl = () => {
+    if(window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+        return '';
+    }
+    return 'http://127.0.0.1:5000';
+};

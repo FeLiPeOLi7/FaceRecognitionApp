@@ -20,7 +20,7 @@ def normalize_text(texto):
 RECOGNITION_INTERVAL = 5
 client_cache = {}
 
-def process_frame_bytes(image_bytes: bytes, sid: str, resize_scale: float = 0.25) -> bytes:
+def process_frame_bytes(image_bytes: bytes, sid: str, resize_scale: float = 0.20) -> bytes:
     """Processes a frame and returns marked JPEG bytes."""
     if sid not in client_cache:
         client_cache[sid] = {"frame_counter": 0, "locations": [], "names": []}

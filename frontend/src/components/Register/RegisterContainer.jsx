@@ -4,7 +4,7 @@ import Card from '../Common/Card';
 import RegisterForm from './RegisterForm';
 import StatusMessage from '../Common/StatusMessage';
 import BackButton from '../Common/BackButton';
-import { getBackendUrl } from '../../config/backendUrl';
+import { getFlaskBackendUrl } from '../../config/backendUrl';
 import styles from '../../styles/Register.module.css';
 
 export default function RegisterContainer({ onNavigate }) {
@@ -36,7 +36,7 @@ export default function RegisterContainer({ onNavigate }) {
         console.log(image);
 
         try {
-            const response = await fetch(`${getBackendUrl()}/registered`, {
+            const response = await fetch(`${getFlaskBackendUrl()}/registered`, {
                 method: 'POST',
                 body: formData,
             });

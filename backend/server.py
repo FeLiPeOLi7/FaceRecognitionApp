@@ -35,11 +35,9 @@ UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 # --- Recognition Logic ---
-
 from processing import process_frame_bytes, register_face
 
 # --- Flask Server (Port 5000) ---
-
 app = Flask(__name__)
 CORS(app)
 
@@ -110,10 +108,16 @@ def build_http_response(status_code, status_text, content_type, body):
     response += "Connection: close\r\n\r\n"
     return response.encode() + body
 
-def handle_options_request(path: str) -> Tuple[int, str, bytes]:
+def handle_options_request() -> Tuple[int, str, bytes]:
     """Handler para OPTIONS requests (CORS pre-flight)."""
-    # Aceitar pre-flight para qualquer rota
-    return 200, "OK", b''
+    response = f"HTTP/1.1 204 No Content\r\n"
+    response += f"Access-Control-Allow-Origin: *\r\n"
+    response += f"Access-Control-Allow-Methods: POST, OPTIONS\r\n"
+    response += "Access-Control-Allow-Headers: Content-Type\r\n"
+    response += "Access-Control-Max-Age: 86400\r\n"
+    response += "Content-Length: 0\r\n\r\n"
+
+    return response.encode()
 
 def handle_socket_client(client_socket, client_address):
     try:
@@ -137,17 +141,18 @@ def handle_socket_client(client_socket, client_address):
 
         if method == 'OPTIONS':
             # Pre-flight CORS request
-            response = (
-                "HTTP/1.1 204 No Content\r\n"
-                "Access-Control-Allow-Origin: *\r\n"
-                "Access-Control-Allow-Methods: POST, OPTIONS\r\n"
-                "Access-Control-Allow-Headers: Content-Type\r\n"
-                "Access-Control-Max-Age: 86400\r\n"
-                "Content-Length: 0\r\n"
-                "\r\n"
-            )
+            # response = (
+            #     "HTTP/1.1 204 No Content\r\n"
+            #     "Access-Control-Allow-Origin: *\r\n"
+            #     "Access-Control-Allow-Methods: POST, OPTIONS\r\n"
+            #     "Access-Control-Allow-Headers: Content-Type\r\n"
+            #     "Access-Control-Max-Age: 86400\r\n"
+            #     "Content-Length: 0\r\n"
+            #     "\r\n"
+            # )
+            response = handle_options_request()
 
-            client_socket.sendall(response.encode())
+            client_socket.sendall(response)
             return
         elif method == "POST" and path == "/frame":
             # Extract image (could be JSON or raw)
