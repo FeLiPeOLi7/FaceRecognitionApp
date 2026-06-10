@@ -11,18 +11,12 @@ export default defineConfig({
         port: 5173,
         allowedHosts: 'all',
         https: {
-            key: fs.readFileSync('../backend/localhost+3-key.pem'), 
-            cert: fs.readFileSync('../backend/localhost+3.pem')
+            key: fs.readFileSync('../backend/localhost+2-key.pem'), 
+            cert: fs.readFileSync('../backend/localhost+2.pem')
         },
         proxy: {
             '/registered': {
                 target: 'http://127.0.0.1:5000',
-                changeOrigin: true,
-                secure: false
-            },
-            '/socket.io': {
-                target: 'http://127.0.0.1:5000',
-                ws: true,
                 changeOrigin: true,
                 secure: false
             }
