@@ -29,8 +29,9 @@ import database
 HOST = "0.0.0.0"
 FLASK_PORT = 5000
 SOCKET_PORT = 5001
-BUFFER_SIZE = 1 * 1024 * 1024 # 1MB for image frames
+MAX_LISTEN_BACKLOG = 10
 
+# --- Creates temp upload folder ---
 UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
@@ -77,7 +78,7 @@ def run_flask():
 def parse_http_request(raw_request: bytes):
     """Simple parser for the frame route."""
     try:
-        request_str = raw_request.decode('utf-8', errors='ignore')
+        request_str = raw_request.decode('utf-8', errors='ignore') #Binary to string
         parts = request_str.split('\r\n\r\n', 1)
         headers_part = parts[0]
         header_lines = headers_part.split('\r\n')
@@ -95,7 +96,7 @@ def parse_http_request(raw_request: bytes):
                 headers[k.strip().lower()] = v.strip()
         
         # Body
-        body = raw_request[len(headers_part) + 4:]
+        body = raw_request[len(headers_part) + 4:] #+4 because of \r\n\r\n (gets everything after the header [i.e. the body])
         return method, path, headers, body
     except:
         return None, None, {}, b""
@@ -122,19 +123,23 @@ def handle_options_request() -> Tuple[int, str, bytes]:
 def handle_socket_client(client_socket, client_address):
     try:
         raw_data = b""
+
+        '''
+        While you dont have all the data, continue getting 4KB chunks. Ensuring that we will have all the packet in the final loop
+        '''
         while True:
             chunk = client_socket.recv(4096)
             if not chunk: break
             raw_data += chunk
-            if b'\r\n\r\n' in raw_data:
+            if b'\r\n\r\n' in raw_data: # Do we have all the headers?
                 # Basic check for content-length to ensure full read
                 headers_str = raw_data.split(b'\r\n\r\n')[0].decode('utf-8', errors='ignore')
                 cl_match = re.search(r'content-length:\s*(\d+)', headers_str, re.I)
                 if cl_match:
-                    cl = int(cl_match.group(1))
-                    if len(raw_data) >= raw_data.find(b'\r\n\r\n') + 4 + cl:
+                    cl = int(cl_match.group(1)) #Content-Length
+                    if len(raw_data) >= raw_data.find(b'\r\n\r\n') + 4 + cl: #Do we have all the body + header?
                         break
-                else: break # No body?
+                else: break 
 
         method, path, headers, body = parse_http_request(raw_data)
         
@@ -165,71 +170,32 @@ def handle_socket_client(client_socket, client_address):
     finally:
         client_socket.close()
 
-def start_socket_server(use_ssl: bool = False):    
+def start_socket_server():    
     """Inicia o servidor HTTP (com ou sem TLS/SSL)."""
 
+    #Creates our SOCKET (SOCK_STREAM enables TCP connection)
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
+    #Re-uses the socket
     server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
     protocol = "HTTP"
-    ssl_context = None
-
-    # Configura SSL
-    if use_ssl:
-        script_dir = Path(__file__).parent
-
-        cert_file = script_dir / "cert.pem"
-        key_file = script_dir / "key.pem"
-
-        if cert_file.exists() and key_file.exists():
-            try:
-                ssl_context = ssl.create_default_context(
-                    ssl.Purpose.CLIENT_AUTH
-                )
-
-                ssl_context.load_cert_chain(
-                    str(cert_file),
-                    str(key_file)
-                )
-
-                protocol = "HTTPS"
-
-            except Exception as e:
-                print(
-                    f"[WARNING] SSL error: {e}"
-                )
 
     try:
+        #Estabilishs the sockets addr
         server_socket.bind((HOST, SOCKET_PORT))
-        server_socket.listen(5)
+        server_socket.listen(MAX_LISTEN_BACKLOG)
 
         print("\n" + "="*60)
         print(f" SERVIDOR {protocol} SOCKET ATIVO")
         print(f" Endereço: {HOST}:{SOCKET_PORT}")
         print("="*60 + "\n")
 
+        # Server is eternally waiting and accepting clients
         while True:
             try:
-                client_socket, client_address = \
-                    server_socket.accept()
-
-                # SSL aplicado ao cliente
-                if ssl_context:
-                    try:
-                        client_socket = \
-                            ssl_context.wrap_socket(
-                                client_socket,
-                                server_side=True
-                            )
-
-                    except Exception as e:
-                        print(
-                            f"[SSL ERROR] {e}"
-                        )
-
-                        client_socket.close()
-                        continue
+                #accept() is a blocking function, so it waits the client accept to continue running the code
+                client_socket, client_address = server_socket.accept()
 
                 client_thread = threading.Thread(
                     target=handle_socket_client,
