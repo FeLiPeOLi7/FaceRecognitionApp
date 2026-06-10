@@ -11,8 +11,8 @@ export default defineConfig({
         port: 5173,
         allowedHosts: 'all',
         https: {
-            key: fs.readFileSync('../backend/localhost+2-key.pem'), 
-            cert: fs.readFileSync('../backend/localhost+2.pem')
+            key: fs.readFileSync('../backend/localhost+3-key.pem'), 
+            cert: fs.readFileSync('../backend/localhost+3.pem')
         },
         proxy: {
             '/registered': {

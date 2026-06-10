@@ -49,11 +49,11 @@ export default function RegisterContainer({ onNavigate }) {
                 setConsent(false);
                 setImage(null);
             } else {
-                setStatus('Erro na persistência do cadastro no servidor.');
+                setStatus('Erro! Nenhuma face detectada');
             }
         } catch (err) {
             console.error(err);
-            setStatus('Falha crítica de comunicação com o backend.');
+            setStatus('Falha crítica de comunicação com o backend');
         }
     };
 
