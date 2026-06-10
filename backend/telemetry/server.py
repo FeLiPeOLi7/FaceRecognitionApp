@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Hybrid Face Recognition Server with Telemetry & Enhanced Security.
+Hybrid Face Recognition Server with Advanced Telemetry & Enhanced Security.
 - Flask (Port 5000): Handles biometric registration (Rest/HTTP).
-- Raw Sockets (Port 5001): Handles real-time frame processing with Telemetry.
+- Raw Sockets (Port 5001): Handles real-time frame processing with Advanced Telemetry.
 """
 
 import socket
@@ -30,30 +30,47 @@ import database
 HOST = "0.0.0.0"
 FLASK_PORT = 5000
 SOCKET_PORT = 5001
-MAX_PAYLOAD_SIZE = 3 * 1024 * 1024
-SOCKET_TIMEOUT = 2.0
+MAX_PAYLOAD_SIZE = 3 * 1024 * 1024  # Máximo 3MB por frame (Proteção Buffer Overflow)
+SOCKET_TIMEOUT = 2.0                 # Timeout de E/S para conexões lentas ou mortas
+MAX_LISTEN_BACKLOG = 10              # Limite da fila de escuta do Socket a nível de SO
 
 UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# --- Telemetry Engine ---
+# --- Advanced Telemetry Engine ---
 class ServerTelemetry:
     def __init__(self):
         self._lock = threading.Lock()
+        
+        # Conexões e Capacidade
         self.active_clients = 0
+        self.peak_clients = 0  # Maior número de usuários simultâneos registrados
+        
+        # Métricas de Volume e Vazão
         self.total_processed_frames = 0
         self.total_bytes_sent = 0
+        self.last_bytes_count = 0
+        self.current_bandwidth_bps = 0.0  # Vazão instantânea em bits por segundo
+        self.last_bandwidth_update = time.time()
+        
+        # Métricas de Tamanho de Pacote
+        self.last_packet_size_bytes = 0
+        self.packet_sizes = []
+        
+        # Desempenho e Inferência
         self.inference_times = []
         self.timeouts_and_drops = 0
         self.rate_limit_blocks = 0
         
-        # Rate Limiting Tracker (IP -> List of timestamps)
+        # Controle de Taxa por IP
         self.ip_request_history: Dict[str, list] = {}
         self.RATE_LIMIT_MAX_FPS = 12
 
     def client_connected(self):
         with self._lock:
             self.active_clients += 1
+            if self.active_clients > self.peak_clients:
+                self.peak_clients = self.active_clients
 
     def client_disconnected(self):
         with self._lock:
@@ -64,6 +81,14 @@ class ServerTelemetry:
         with self._lock:
             self.total_processed_frames += 1
             self.total_bytes_sent += bytes_sent
+            self.last_packet_size_bytes = bytes_sent
+            
+            # Histórico dos tamanhos de pacotes para média móvel
+            self.packet_sizes.append(bytes_sent)
+            if len(self.packet_sizes) > 100:
+                self.packet_sizes.pop(0)
+                
+            # Histórico de tempos de inferência
             self.inference_times.append(inference_time)
             if len(self.inference_times) > 100:
                 self.inference_times.pop(0)
@@ -77,41 +102,76 @@ class ServerTelemetry:
             self.rate_limit_blocks += 1
 
     def is_rate_limited(self, ip: str) -> bool:
-        """Security: Aplica controle de taxa na Camada de Aplicação."""
         with self._lock:
             now = time.time()
             if ip not in self.ip_request_history:
                 self.ip_request_history[ip] = []
-            
-            # Limpa histórico antigo (> 1 segundo)
             self.ip_request_history[ip] = [t for t in self.ip_request_history[ip] if now - t < 1.0]
-            
             if len(self.ip_request_history[ip]) >= self.RATE_LIMIT_MAX_FPS:
                 return True
-            
             self.ip_request_history[ip].append(now)
             return False
 
+    def update_instant_bandwidth(self):
+        """Calcula a largura de banda consumida no último intervalo."""
+        with self._lock:
+            now = time.time()
+            elapsed = now - self.last_bandwidth_update
+            if elapsed >= 1.0:
+                bytes_diff = self.total_bytes_sent - self.last_bytes_count
+                # Converte bytes para Bits por Segundo (bps)
+                self.current_bandwidth_bps = (bytes_diff * 8) / elapsed
+                self.last_bytes_count = self.total_bytes_sent
+                self.last_bandwidth_update = now
+
+    def calculate_theoretical_capacity(self, avg_inference_ms: float) -> str:
+        """
+        Estima a capacidade máxima do servidor com base na latência de processamento
+        da CPU e nas restrições de concorrência (threads e backlog).
+        """
+        if avg_inference_ms == 0:
+            return "Indefinida (Aguardando tráfego)"
+        
+        # Cada cliente envia 5 frames por segundo (um frame a cada 200ms)
+        # Se um frame demora 'avg_inference_ms' para processar, um único núcleo processa (1000 / avg_inference_ms) f/s.
+        # Considerando o modelo multithread cooperativo e a fila do SO (Backlog):
+        max_frames_per_second = 1000.0 / avg_inference_ms
+        estimated_users = max_frames_per_second / 5.0  # Cada usuário consome 5 FPS do pool
+        
+        # Teto físico baseado no Backlog máximo de escuta do socket
+        capacity_ceiling = estimated_users + MAX_LISTEN_BACKLOG
+        return f"~{int(capacity_ceiling)} usuários simultâneos (limite físico por CPU)"
+
     def print_metrics_loop(self):
-        """Exibe o Dashboard de telemetria no terminal a cada 3 segundos."""
+        """Exibe o Dashboard expandido de telemetria no terminal a cada 3 segundos."""
         while True:
             time.sleep(3.0)
+            self.update_instant_bandwidth()
+            
             with self._lock:
                 avg_inference = (sum(self.inference_times) / len(self.inference_times) * 1000) if self.inference_times else 0
-                throughput_mb = (self.total_bytes_sent / (1024 * 1024))
+                avg_packet_size = (sum(self.packet_sizes) / len(self.packet_sizes) / 1024) if self.packet_sizes else 0
+                last_packet_kb = self.last_packet_size_bytes / 1024
                 
-                print("\n" + "="*25 + " TELEMETRIA DE REDE " + "="*25)
-                print(f" Capacidade Concorrente Estável : {self.active_clients} Clientes Ativos")
-                print(f" Vazão de Saída Acumulada       : {throughput_mb:.2f} MB Trafegados")
-                print(f" Latência Média do Pipeline IA : {avg_inference:.2f} ms / frame")
-                print(f" Total de Frames Processados   : {self.total_processed_frames} unidades")
-                print(f" Perda de Conexão / Timeouts   : {self.timeouts_and_drops} falhas de link")
-                print(f" Bloqueios de Rate Limit (DoS) : {self.rate_limit_blocks} requisições barradas")
-                print("="*72 + "\n")
+                throughput_mb = (self.total_bytes_sent / (1024 * 1024))
+                bandwidth_kbps = self.current_bandwidth_bps / 1024
+                
+                capacity_estimation = self.calculate_theoretical_capacity(avg_inference)
+                
+                print("\n" + "="*23 + " ADVANCED NETWORK TELEMETRY " + "="*23)
+                print(f" Concurrent Connections        : {self.active_clients} Active | [Peak: {self.peak_clients}]")
+                print(f" Estimated Max Capacity        : {capacity_estimation}")
+                print(f" Instant Bandwidth             : {bandwidth_kbps:.2f} Kbps")
+                print(f" Accumulated Output Volume     : {throughput_mb:.2f} MB")
+                print(f" Last Packet Size              : {last_packet_kb:.2f} KB")
+                print(f" Average Packet Size           : {avg_packet_size:.2f} KB")
+                print(f" Average Inference Latency     : {avg_inference:.2f} ms / frame")
+                print(f" Total Processed Frames        : {self.total_processed_frames} units")
+                print(f" Connection Drops / Timeouts   : {self.timeouts_and_drops} failures")
+                print(f" Rate Limit Blocks (DoS)       : {self.rate_limit_blocks} rejected requests")
+                print("="*74 + "\n")
 
 telemetry = ServerTelemetry()
-
-# Inicializa thread de exibição de métricas
 threading.Thread(target=telemetry.print_metrics_loop, daemon=True).start()
 
 
@@ -200,10 +260,8 @@ def handle_socket_client(client_socket, client_address):
     telemetry.client_connected()
     
     try:
-        # Security Guard: Aplica timeout de socket para evitar travamento por conexões fantasmas
         client_socket.settimeout(SOCKET_TIMEOUT)
         
-        # Security Guard: Rate Limiting Preventivo antes de alocar processamento
         if telemetry.is_rate_limited(client_ip):
             telemetry.record_rate_limit()
             resp = build_http_response(425, "Too Early", "application/json", b'{"error": "Rate limit exceeded"}')
@@ -217,7 +275,6 @@ def handle_socket_client(client_socket, client_address):
                 break
             raw_data += chunk
             
-            # Security Guard: Evita estouro de pilha alocada na memória
             if len(raw_data) > MAX_PAYLOAD_SIZE:
                 raise ValueError("Payload excede o limite máximo de segurança.")
 
@@ -246,7 +303,6 @@ def handle_socket_client(client_socket, client_address):
             
             sid = f"{client_address[0]}:{client_address[1]}"
             
-            # Medição de Tempo de Inferência (IA + OpenCV)
             start_time = time.perf_counter()
             processed_jpeg = process_frame_bytes(image_bytes, sid)
             end_time = time.perf_counter()
@@ -256,16 +312,14 @@ def handle_socket_client(client_socket, client_address):
             response = build_http_response(200, "OK", "image/jpeg", processed_jpeg)
             client_socket.sendall(response)
             
-            # Registra sucesso e vazão na telemetria
             telemetry.record_frame(len(response), inference_time)
         else:
             resp = build_http_response(404, "Not Found", "application/json", b'{"error": "Route not found"}')
             client_socket.sendall(resp)
             
-    except (socket.timeout, socket.error, ValueError) as e:
-        # Conta a perda de pacotes ou desconexões por timeout de rede
+    except (socket.timeout, socket.error, ValueError):
         telemetry.record_drop()
-    except Exception as e:
+    except Exception:
         telemetry.record_drop()
     finally:
         telemetry.client_disconnected()
@@ -293,7 +347,7 @@ def start_socket_server(use_ssl: bool = False):
 
     try:
         server_socket.bind((HOST, SOCKET_PORT))
-        server_socket.listen(10) # Fila de escuta estendida para mitigar picos de conexões
+        server_socket.listen(MAX_LISTEN_BACKLOG)
 
         print("\n" + "="*60)
         print(f" SERVIDOR {protocol} SOCKET ATIVO COLETANDO TELEMETRIA")
@@ -307,7 +361,7 @@ def start_socket_server(use_ssl: bool = False):
                 if ssl_context:
                     try:
                         client_socket = ssl_context.wrap_socket(client_socket, server_side=True)
-                    except Exception as e:
+                    except Exception:
                         telemetry.record_drop()
                         client_socket.close()
                         continue
