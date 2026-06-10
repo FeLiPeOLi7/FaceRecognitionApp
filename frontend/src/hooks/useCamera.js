@@ -34,7 +34,6 @@ export function useCamera(fps = 5) {
 
         setStatus('Iniciando câmera...');
         try {
-            // 1. ENGENHARIA DE PAYLOAD: Detecta orientação para definir a resolução ideal
             const isMobilePortrait = window.innerHeight > window.innerWidth;
             const constraints = {
                 video: {
@@ -52,7 +51,6 @@ export function useCamera(fps = 5) {
                 videoElementRef.current.srcObject = stream;
             }
 
-            // Aguarda o vídeo carregar os metadados para sabermos o tamanho real entregue pelo hardware
             await new Promise((resolve) => {
                 if (videoElementRef.current) {
                     videoElementRef.current.onloadedmetadata = () => resolve();
@@ -61,11 +59,9 @@ export function useCamera(fps = 5) {
                 }
             });
 
-            // 2. DIMENSIONAMENTO DINÂMICO: Extrai o tamanho real do track de vídeo
             const videoTrack = stream.getVideoTracks()[0];
             const { width: realWidth, height: realHeight } = videoTrack.getSettings();
 
-            // Ajusta o Canvas interno para ter a mesma resolução real da câmera
             if (canvasElementRef.current) {
                 canvasElementRef.current.width = realWidth;
                 canvasElementRef.current.height = realHeight;
@@ -76,7 +72,6 @@ export function useCamera(fps = 5) {
 
             const ctx = canvasElementRef.current.getContext('2d');
 
-            // Loop de ticks (FPS) via setInterval
             timerIdRef.current = setInterval(() => {
                 if (
                     !streamRef.current || 
@@ -87,10 +82,8 @@ export function useCamera(fps = 5) {
 
                 frameInFlightRef.current = true;
 
-                // Desenha a matriz do frame respeitando a resolução real do sensor
                 ctx.drawImage(videoElementRef.current, 0, 0, realWidth, realHeight);
 
-                // Serialização e envio do Payload binário convertido em Base64
                 canvasElementRef.current.toBlob((blob) => {
                     if (!blob) {
                         frameInFlightRef.current = false;
@@ -102,12 +95,11 @@ export function useCamera(fps = 5) {
                         const result = String(reader.result || '');
                         const base64 = result.includes(',') ? result.split(',')[1] : '';
 
-                        // Callback que dispara o evento pelo canal do Socket.IO
                         onFrameCallback(base64);
                         frameInFlightRef.current = false;
                     };
                     reader.readAsDataURL(blob);
-                }, 'image/jpeg', 0.80); // Compressão em 80% de qualidade para otimizar vazão de rede
+                }, 'image/jpeg', 0.80);
             }, intervalMs);
 
         } catch (err) {

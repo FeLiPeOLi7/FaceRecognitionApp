@@ -25,8 +25,7 @@ export default function RegisterContainer({ onNavigate }) {
             return;
         }
 
-        setStatus('Transmitindo payload para processamento...');
-        const formData = new FormData();
+        setStatus('Transmitindo payload para processamento...'); const formData = new FormData();
         formData.append('name', name);
         formData.append('consent', consent);
         formData.append('image', image);

@@ -27,11 +27,11 @@
     color: var(--color-font);
     font-weight: bold;
     text-align: center;
-    pointer-events: none; /* Impede que o texto bloqueie cliques na região */
+    pointer-events: none;
 }
 
 .processedImage {
-    width: 80%;
+    width: 95%;
     height: auto;
     object-fit: contain;
 }

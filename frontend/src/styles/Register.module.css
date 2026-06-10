@@ -135,6 +135,8 @@ title {
     display: flex;
     align-items: center;
     justify-content: space-between;
+
+    font-size: var(--font-size-small);
 }
 
 .modeButton {
