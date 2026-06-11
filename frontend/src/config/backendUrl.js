@@ -1,3 +1,4 @@
+// Resolves the Recognize endpoint dynamically
 export function getSocketBackendUrl() {
     const configuredUrl = import.meta.env.VITE_BACKEND_URL
         || import.meta.env.VITE_SOCKET_URL
@@ -15,6 +16,7 @@ export function getSocketBackendUrl() {
     return 'http://localhost:5001';
 }
 
+// Resolves the Register API path
 export const getFlaskBackendUrl = () => {
     if(window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
         return '';
