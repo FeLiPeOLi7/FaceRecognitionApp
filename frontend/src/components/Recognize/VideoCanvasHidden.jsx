@@ -1,3 +1,4 @@
+// Sandbox pipeline
 export default function VideoCanvasHidden({ videoRef, canvasRef }) {
     return (
         <>

@@ -1,5 +1,6 @@
 import styles from '../../styles/Register.module.css';
 
+// Button to change the desired mode
 export default function RegisterModeSelector({ mode, onModeChange }) {
     return (
         <div className={styles.modeSelector}>

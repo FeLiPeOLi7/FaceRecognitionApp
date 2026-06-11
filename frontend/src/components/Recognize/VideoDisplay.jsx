@@ -1,6 +1,7 @@
 import spinner from '../../assets/spinner.svg';
 import styles from '../../styles/Recognize.module.css';
 
+// Viewport layer displaying live server-processed frame data
 export default function VideoDisplay({ imageSrc }) {
     return (
         <div className={styles.displayWrapper}>

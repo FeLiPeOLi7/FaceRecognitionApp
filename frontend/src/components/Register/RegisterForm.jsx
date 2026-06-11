@@ -6,9 +6,11 @@ import VideoInput from './VideoInput';
 import RegisterModeSelector from './RegisterModeSelector';
 import styles from '../../styles/Register.module.css';
 
+// Nested controller handling the sub-routing context between file upload and local snapshot modes
 export default function RegisterForm({ name, onNameChange, consent, onConsentChange, onFileChange, onSubmit }) {
-    const [insertMode, setInsertMode] = useState('file'); // 'file' or 'video'
+    const [insertMode, setInsertMode] = useState('file'); // View configuration state toggle
 
+    // Reset file buffers during view changes to prevent stale data leaking across form validations
     const handleModeChange = (mode) => {
         setInsertMode(mode);
         onFileChange(null);

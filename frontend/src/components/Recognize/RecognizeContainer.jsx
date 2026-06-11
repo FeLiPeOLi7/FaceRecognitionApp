@@ -9,6 +9,7 @@ import { useCamera } from '../../hooks/useCamera';
 import { useSocket } from '../../hooks/useSocket';
 import styles from '../../styles/Recognize.module.css';
 
+// Controller managing live camera hooks and polling network emitters
 export default function RecognizeContainer({ onNavigate }) {
     const { emitFrame, processedSrc, socketError } = useSocket();
     const {
@@ -19,18 +20,21 @@ export default function RecognizeContainer({ onNavigate }) {
         stopCapture,
         videoElementRef,
         canvasElementRef
-    } = useCamera(5); 
+    } = useCamera(5); // Throttle tracking tick frame dispatch to 5 FPS
 
+    // Component lifecycle teardown: Force secure resource clearance on unmount
     useEffect(() => {
         return () => stopCapture();
     }, []);
 
+    // Network error listener: Synchronize socket degradation state directly into user interface
     useEffect(() => {
         if (socketError) {
             setStatus('Erro de conexão com o barramento WebSockets.');
         }
     }, [socketError]);
 
+    // Feed target tick callback to bind live frame Base64 strings straight into the network emitter
     const handleStart = () => {
         startCapture((base64Frame) => {
             emitFrame(base64Frame);

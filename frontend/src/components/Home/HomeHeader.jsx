@@ -1,5 +1,6 @@
 import styles from '../../styles/Home.module.css';
 
+// Static titles presenting global contextual system labeling
 export default function HomeHeader() {
     return (
         <>

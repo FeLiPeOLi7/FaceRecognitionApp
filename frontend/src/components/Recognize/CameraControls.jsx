@@ -1,6 +1,7 @@
 import CameraButton from './CameraButton';
 import styles from '../../styles/Recognize.module.css';
 
+// Layout interface separating workflow action triggers
 export default function CameraControls({ capturing, onStart, onStop, onHome }) {
     return (
         <div className={styles.controlsRow}>
