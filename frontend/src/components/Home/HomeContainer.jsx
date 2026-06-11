@@ -3,6 +3,7 @@ import Card from '../Common/Card';
 import HomeHeader from './HomeHeader';
 import HomeButton from './HomeButton';
 
+// Main dashboard
 export default function HomeContainer({ onNavigate }) {
     return (
         <PageWrapper>

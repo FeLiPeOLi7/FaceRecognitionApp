@@ -1,5 +1,6 @@
 import styles from '../../styles/Register.module.css';
 
+// Statutory enforcement checkbox protecting explicit processing alignment rules (LGPD Compliance)
 export default function ConsentCheckbox({ checked, onChange }) {
     return (
         <div className={styles.checkboxGroup}>

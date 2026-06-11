@@ -1,5 +1,6 @@
 import styles from '../../styles/Register.module.css';
 
+// Encapsulated element targeting storage access requests
 export default function FileInput({ label, accept, onChange, required }) {
     return (
         <div className={styles.fieldGroup}>

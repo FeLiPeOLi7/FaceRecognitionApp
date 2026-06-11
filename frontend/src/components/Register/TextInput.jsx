@@ -1,5 +1,6 @@
 import styles from '../../styles/Register.module.css';
 
+// Standardized single field form validation block
 export default function TextInput({ label, value, onChange, required }) {
     return (
         <div className={styles.fieldGroup}>
