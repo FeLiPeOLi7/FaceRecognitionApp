@@ -1,3 +1,6 @@
+<h1 align="center"> <img width="420" height="200" alt="face_recog_banner" src="https://github.com/user-attachments/assets/f1a49f5e-c845-4353-8c19-a5d76f25f1cc" /> </h1>
+
+
 # Face Recognition Web App (V3.0.1)
 
 Sistema web de reconhecimento facial utilizando uma arquitetura desacoplada com Flask/Sockets no backend e React no frontend, focado em alta performance, componentização e conformidade com a LGPD.
